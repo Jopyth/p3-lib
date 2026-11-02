@@ -8,18 +8,25 @@ use windows::Win32::{
 };
 
 const PATCH_ADDRESS: u32 = 0x00451759;
+/// Second part of draw_spotted_ships.
+static mut DRAW_SPOTTED_SHIPS_CONTINUATION: u32 = 0x00451B58;
 
 #[no_mangle]
 pub unsafe extern "C" fn start() -> u32 {
     let _ = log::set_logger(&win_dbg_logger::DEBUGGER_LOGGER);
     log::set_max_level(LevelFilter::Trace);
+
+    if !p3_api::version::is_supported() {
+        return p3_api::version::UNSUPPORTED_BUILD;
+    }
+    DRAW_SPOTTED_SHIPS_CONTINUATION = p3_api::addr(DRAW_SPOTTED_SHIPS_CONTINUATION);
     let trampoline_address: u32 = (&draw_all_ships_trampoline) as *const _ as _;
-    let relative_trampoline_address: u32 = trampoline_address.wrapping_sub(PATCH_ADDRESS) - 5; //TODO move pointer calcs to hooklet
+    let relative_trampoline_address: u32 = trampoline_address.wrapping_sub(p3_api::addr(PATCH_ADDRESS)) - 5; //TODO move pointer calcs to hooklet
 
     let mut patch: [u8; 5] = [0; 5];
     patch[0] = 0xe9;
     patch[1..5].copy_from_slice(&relative_trampoline_address.to_le_bytes());
-    let patch_ptr: *mut u8 = PATCH_ADDRESS as _;
+    let patch_ptr: *mut u8 = p3_api::addr(PATCH_ADDRESS) as _;
 
     let mut old_flags: PAGE_PROTECTION_FLAGS = windows::Win32::System::Memory::PAGE_PROTECTION_FLAGS(0);
     if !VirtualProtect(patch_ptr as _, 5, PAGE_EXECUTE_READWRITE, &mut old_flags).as_bool() {
@@ -89,8 +96,9 @@ pop ecx
 pop eax
 
 # jump to second part of draw_spotted_ships
-mov eax, 0x00451B58
+mov eax, [{continuation}]
 jmp eax",
 draw_all_ships_trampoline = sym draw_all_ships_trampoline,
-fixup_all_ships = sym fixup_all_ships
+fixup_all_ships = sym fixup_all_ships,
+continuation = sym DRAW_SPOTTED_SHIPS_CONTINUATION
 );

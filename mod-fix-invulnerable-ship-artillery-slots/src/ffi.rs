@@ -6,19 +6,25 @@ use log::{debug, LevelFilter};
 const PATCH_ADDRESS_1: u32 = 0x0061FDDB;
 const PATCH_ADDRESS_2: u32 = 0x0061FE8E;
 
-static CONTINUATION_1: u32 = 0x0061FDE2;
-static CONTINUATION_2: u32 = 0x0061FE96;
+static mut CONTINUATION_1: u32 = 0x0061FDE2;
+static mut CONTINUATION_2: u32 = 0x0061FE96;
 
 #[no_mangle]
 pub unsafe extern "C" fn start() -> u32 {
     let _ = log::set_logger(&win_dbg_logger::DEBUGGER_LOGGER);
     log::set_max_level(LevelFilter::Trace);
 
-    if deploy_rel32_raw(PATCH_ADDRESS_1 as _, (&fix_index_calc1) as *const _ as _, X86Rel32Type::Jump).is_err() {
+    if !p3_api::version::is_supported() {
+        return p3_api::version::UNSUPPORTED_BUILD;
+    }
+    CONTINUATION_1 = p3_api::addr(CONTINUATION_1);
+    CONTINUATION_2 = p3_api::addr(CONTINUATION_2);
+
+    if deploy_rel32_raw(p3_api::addr(PATCH_ADDRESS_1), (&fix_index_calc1) as *const _ as _, X86Rel32Type::Jump).is_err() {
         return 1;
     }
 
-    if deploy_rel32_raw(PATCH_ADDRESS_2 as _, (&fix_index_calc2) as *const _ as _, X86Rel32Type::Jump).is_err() {
+    if deploy_rel32_raw(p3_api::addr(PATCH_ADDRESS_2), (&fix_index_calc2) as *const _ as _, X86Rel32Type::Jump).is_err() {
         return 2;
     }
 

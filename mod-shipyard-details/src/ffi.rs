@@ -30,10 +30,10 @@ pub static QUALITY_LEVEL: &CStr = c"Quality Level";
 pub static REQUIRED_XP: &CStr = c"Required XP";
 
 const SHIPYARD_WINDOW_OPEN_PATCH_ADDRESS: u32 = 0x005ADA56;
-static SHIPYARD_WINDOW_OPEN_CONTINUATION: u32 = 0x005ADA93;
+static mut SHIPYARD_WINDOW_OPEN_CONTINUATION: u32 = 0x005ADA93;
 
 const LOAD_SHIPYARD_SELECTED_PAGE_PATCH_ADDRESS: u32 = 0x005F4320;
-static LOAD_SHIPYARD_SELECTED_PAGE_CONTINUATION: u32 = 0x005F4326;
+static mut LOAD_SHIPYARD_SELECTED_PAGE_CONTINUATION: u32 = 0x005F4326;
 
 const COL_OFFSETS_4: &[i32; 4] = &[60, 120, 180, 240];
 
@@ -42,8 +42,14 @@ pub unsafe extern "C" fn start() -> u32 {
     let _ = log::set_logger(&win_dbg_logger::DEBUGGER_LOGGER);
     log::set_max_level(log::LevelFilter::Trace);
 
+    if !p3_api::version::is_supported() {
+        return p3_api::version::UNSUPPORTED_BUILD;
+    }
+    SHIPYARD_WINDOW_OPEN_CONTINUATION = p3_api::addr(SHIPYARD_WINDOW_OPEN_CONTINUATION);
+    LOAD_SHIPYARD_SELECTED_PAGE_CONTINUATION = p3_api::addr(LOAD_SHIPYARD_SELECTED_PAGE_CONTINUATION);
+
     if deploy_rel32_raw(
-        SHIPYARD_WINDOW_OPEN_PATCH_ADDRESS as _,
+        p3_api::addr(SHIPYARD_WINDOW_OPEN_PATCH_ADDRESS),
         (&ui_shipyard_window_open_detour) as *const _ as _,
         X86Rel32Type::Jump,
     )
@@ -53,7 +59,7 @@ pub unsafe extern "C" fn start() -> u32 {
     }
 
     if deploy_rel32_raw(
-        LOAD_SHIPYARD_SELECTED_PAGE_PATCH_ADDRESS as _,
+        p3_api::addr(LOAD_SHIPYARD_SELECTED_PAGE_PATCH_ADDRESS),
         (&load_shipyard_selected_page_detour) as *const _ as _,
         X86Rel32Type::Jump,
     )

@@ -9,9 +9,13 @@ pub unsafe extern "C" fn start() -> u32 {
     let _ = log::set_logger(&win_dbg_logger::DEBUGGER_LOGGER);
     log::set_max_level(log::LevelFilter::Trace);
 
+    if !p3_api::version::is_supported() {
+        return p3_api::version::UNSUPPORTED_BUILD;
+    }
+
     debug!("Patching `sub` immediate value at {:#x}", SUBTRACTION_PATCH_ADDRESS);
     let subtraction_patch = [4];
-    match replace_slice_rwx(SUBTRACTION_PATCH_ADDRESS, &subtraction_patch) {
+    match replace_slice_rwx(p3_api::addr(SUBTRACTION_PATCH_ADDRESS), &subtraction_patch) {
         Ok(_) => {}
         Err(e) => {
             error!("Failed to deploy patch: {:?}", e);
@@ -21,7 +25,7 @@ pub unsafe extern "C" fn start() -> u32 {
 
     debug!("Patching whaleoil `or` immediate value at {:#x}", SUBTRACTION_PATCH_ADDRESS);
     let whaleoil_patch = 0x20002u32.to_le_bytes();
-    match replace_slice_rwx(WHALEOIL_PATCH_ADDRESS, &whaleoil_patch) {
+    match replace_slice_rwx(p3_api::addr(WHALEOIL_PATCH_ADDRESS), &whaleoil_patch) {
         Ok(_) => {}
         Err(e) => {
             error!("Failed to deploy patch: {:?}", e);

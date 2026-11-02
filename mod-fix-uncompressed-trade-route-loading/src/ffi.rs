@@ -9,7 +9,11 @@ pub unsafe extern "C" fn start() -> u32 {
     let _ = log::set_logger(&win_dbg_logger::DEBUGGER_LOGGER);
     log::set_max_level(log::LevelFilter::Trace);
 
-    match deploy_rel32_raw(PATCH_ADDRESS, &abs_clean as *const c_void as _, X86Rel32Type::Call) {
+    if !p3_api::version::is_supported() {
+        return p3_api::version::UNSUPPORTED_BUILD;
+    }
+
+    match deploy_rel32_raw(p3_api::addr(PATCH_ADDRESS), &abs_clean as *const c_void as _, X86Rel32Type::Call) {
         Ok(_) => {}
         Err(_) => return 1,
     }

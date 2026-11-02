@@ -2,24 +2,28 @@ use std::{ffi::c_void, thread};
 
 use hooklet::windows::x86::{deploy_rel32_raw, replace_slice_rwx, X86Rel32Type};
 use log::{debug, trace};
-use p3_api::{mods::init_mod, operations::OperationsPtr};
+use p3_api::{addr, mods::init_mod, operations::OperationsPtr};
 
 #[no_mangle]
 pub unsafe extern "C" fn start() -> u32 {
     init_mod();
 
+    if !p3_api::version::is_supported() {
+        return p3_api::version::UNSUPPORTED_BUILD;
+    }
+
     debug!("Fix execute_operations current ops lock (TODO evaluate whether we have to save and restore regs)");
-    match deploy_rel32_raw(0x005468B3, lock_current as *const c_void as _, X86Rel32Type::Call) {
+    match deploy_rel32_raw(addr(0x005468B3), lock_current as *const c_void as _, X86Rel32Type::Call) {
         Ok(_) => {}
         Err(_) => return 1,
     }
-    match deploy_rel32_raw(0x005468B3 + 5, 0x005468EE, X86Rel32Type::Jump) {
+    match deploy_rel32_raw(addr(0x005468B3) + 5, addr(0x005468EE), X86Rel32Type::Jump) {
         Ok(_) => {}
         Err(_) => return 2,
     }
 
     debug!("Fix execute_operations current ops unlock");
-    match deploy_rel32_raw(0x00547254, execute_operations_unlock_current as *const c_void as _, X86Rel32Type::Call) {
+    match deploy_rel32_raw(addr(0x00547254), execute_operations_unlock_current as *const c_void as _, X86Rel32Type::Call) {
         Ok(_) => {}
         Err(_) => return 3,
     }
@@ -27,145 +31,145 @@ pub unsafe extern "C" fn start() -> u32 {
         0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
         0x90, 0x90,
     ];
-    match replace_slice_rwx(0x547259, &execute_operations_unlock) {
+    match replace_slice_rwx(addr(0x547259), &execute_operations_unlock) {
         Ok(_) => {}
         Err(_) => return 4,
     }
 
     debug!("Fix insert_into_pending_operations_wrapper pending lock (TODO should we keep the >= 52 pending check?)");
-    match deploy_rel32_raw(0x0054AA79, lock_pending as *const c_void as _, X86Rel32Type::Call) {
+    match deploy_rel32_raw(addr(0x0054AA79), lock_pending as *const c_void as _, X86Rel32Type::Call) {
         Ok(_) => {}
         Err(_) => return 5,
     }
-    match deploy_rel32_raw(0x0054AA79 + 5, 0x0054AAB5, X86Rel32Type::Jump) {
+    match deploy_rel32_raw(addr(0x0054AA79) + 5, addr(0x0054AAB5), X86Rel32Type::Jump) {
         Ok(_) => {}
         Err(_) => return 6,
     }
 
     debug!("Fix insert_into_pending_operations_wrapper pending unlock (TODO check reg save)");
-    match deploy_rel32_raw(0x0054AAC2, unlock_pending as *const c_void as _, X86Rel32Type::Call) {
+    match deploy_rel32_raw(addr(0x0054AAC2), unlock_pending as *const c_void as _, X86Rel32Type::Call) {
         Ok(_) => {}
         Err(_) => return 7,
     }
     let insert_into_pending_operations_unlock: [u8; 5] = [0x90, 0x90, 0x90, 0x90, 0x90];
-    match replace_slice_rwx(0x0054AAC2 + 5, &insert_into_pending_operations_unlock) {
+    match replace_slice_rwx(addr(0x0054AAC2) + 5, &insert_into_pending_operations_unlock) {
         Ok(_) => {}
         Err(_) => return 8,
     }
 
     debug!("Fix operations_network_host_send_to_all_and_move_to_current_ops current lock");
-    match deploy_rel32_raw(0x0054BCCB, &lock_current_clean as *const c_void as _, X86Rel32Type::Call) {
+    match deploy_rel32_raw(addr(0x0054BCCB), &lock_current_clean as *const c_void as _, X86Rel32Type::Call) {
         Ok(_) => {}
         Err(_) => return 9,
     }
     let operations_network_host_send_to_all_and_move_to_current_ops_lock: [u8; 5] = [0x90, 0x90, 0x90, 0x90, 0x90];
-    match replace_slice_rwx(0x0054BCCB + 5, &operations_network_host_send_to_all_and_move_to_current_ops_lock) {
+    match replace_slice_rwx(addr(0x0054BCCB) + 5, &operations_network_host_send_to_all_and_move_to_current_ops_lock) {
         Ok(_) => {}
         Err(_) => return 10,
     }
 
     debug!("Fix operations_network_host_send_to_all_and_move_to_current_ops current unlock");
-    match deploy_rel32_raw(0x0054BD2C, &unlock_current_clean as *const c_void as _, X86Rel32Type::Call) {
+    match deploy_rel32_raw(addr(0x0054BD2C), &unlock_current_clean as *const c_void as _, X86Rel32Type::Call) {
         Ok(_) => {}
         Err(_) => return 11,
     }
-    match replace_slice_rwx(0x0054BD2C + 5, &[0x90]) {
+    match replace_slice_rwx(addr(0x0054BD2C) + 5, &[0x90]) {
         Ok(_) => {}
         Err(_) => return 12,
     }
 
     debug!("Fix operations_network_host_receive_from_all_and_own_pending pending lock");
     // There is a callee saved register restoring `pop ebx`` in the lock code (╯°□°）╯︵ ┻━┻
-    match deploy_rel32_raw(0x0054B90D, &lock_pending_clean as *const c_void as _, X86Rel32Type::Call) {
+    match deploy_rel32_raw(addr(0x0054B90D), &lock_pending_clean as *const c_void as _, X86Rel32Type::Call) {
         Ok(_) => {}
         Err(_) => return 13,
     }
-    match deploy_rel32_raw(0x0054B90D + 5, 0x0054B932, X86Rel32Type::Jump) {
+    match deploy_rel32_raw(addr(0x0054B90D) + 5, addr(0x0054B932), X86Rel32Type::Jump) {
         Ok(_) => {}
         Err(_) => return 14,
     }
 
     debug!("Fix operations_network_host_receive_from_all_and_own_pending pending unlock");
-    match deploy_rel32_raw(0x0054B949, &unlock_pending_clean as *const c_void as _, X86Rel32Type::Call) {
+    match deploy_rel32_raw(addr(0x0054B949), &unlock_pending_clean as *const c_void as _, X86Rel32Type::Call) {
         Ok(_) => {}
         Err(_) => return 15,
     }
     // We sneak in the `pop ebx` here to keep the stack intact 🧠
-    match replace_slice_rwx(0x0054B949 + 5, &[0x5b, 0x90, 0x90, 0x90, 0x90]) {
+    match replace_slice_rwx(addr(0x0054B949) + 5, &[0x5b, 0x90, 0x90, 0x90, 0x90]) {
         Ok(_) => {}
         Err(_) => return 16,
     }
 
     debug!("Fix operations_client_receive_from_host current lock");
-    match deploy_rel32_raw(0x0054B13F, &try_lock_current_clean as *const c_void as _, X86Rel32Type::Call) {
+    match deploy_rel32_raw(addr(0x0054B13F), &try_lock_current_clean as *const c_void as _, X86Rel32Type::Call) {
         Ok(_) => {}
         Err(_) => return 17,
     }
-    match replace_slice_rwx(0x0054B13F + 5, &[0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90]) {
+    match replace_slice_rwx(addr(0x0054B13F) + 5, &[0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90]) {
         Ok(_) => {}
         Err(_) => return 18,
     }
-    match deploy_rel32_raw(0x0054B200, &try_lock_current_clean as *const c_void as _, X86Rel32Type::Call) {
+    match deploy_rel32_raw(addr(0x0054B200), &try_lock_current_clean as *const c_void as _, X86Rel32Type::Call) {
         Ok(_) => {}
         Err(_) => return 19,
     }
-    match replace_slice_rwx(0x0054B200 + 5, &[0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90]) {
+    match replace_slice_rwx(addr(0x0054B200) + 5, &[0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90]) {
         Ok(_) => {}
         Err(_) => return 20,
     }
 
     debug!("Fix operations_client_receive_from_host current unlock");
-    match deploy_rel32_raw(0x0054B193, &unlock_current_clean as *const c_void as _, X86Rel32Type::Call) {
+    match deploy_rel32_raw(addr(0x0054B193), &unlock_current_clean as *const c_void as _, X86Rel32Type::Call) {
         Ok(_) => {}
         Err(_) => return 21,
     }
-    match replace_slice_rwx(0x0054B193 + 5, &[0x66, 0x39, 0x7c, 0x24, 0x26, 0x90]) {
+    match replace_slice_rwx(addr(0x0054B193) + 5, &[0x66, 0x39, 0x7c, 0x24, 0x26, 0x90]) {
         Ok(_) => {}
         Err(_) => return 22,
     }
     // Fix jnz above
-    match replace_slice_rwx(0x0054B14D + 1, &[0x49]) {
+    match replace_slice_rwx(addr(0x0054B14D) + 1, &[0x49]) {
         Ok(_) => {}
         Err(_) => return 23,
     }
-    match deploy_rel32_raw(0x0054B21C, &unlock_current_clean as *const c_void as _, X86Rel32Type::Call) {
+    match deploy_rel32_raw(addr(0x0054B21C), &unlock_current_clean as *const c_void as _, X86Rel32Type::Call) {
         Ok(_) => {}
         Err(_) => return 24,
     }
-    match replace_slice_rwx(0x0054B21C + 5, &[0x90]) {
+    match replace_slice_rwx(addr(0x0054B21C) + 5, &[0x90]) {
         Ok(_) => {}
         Err(_) => return 25,
     }
     // Fix jnz above
-    match replace_slice_rwx(0x0054B20E + 1, &[0x12]) {
+    match replace_slice_rwx(addr(0x0054B20E) + 1, &[0x12]) {
         Ok(_) => {}
         Err(_) => return 26,
     }
 
     debug!("Fix operations_network_client_send_pending_operations pending lock");
-    match deploy_rel32_raw(0x0054AFB7, &lock_pending_clean as *const c_void as _, X86Rel32Type::Call) {
+    match deploy_rel32_raw(addr(0x0054AFB7), &lock_pending_clean as *const c_void as _, X86Rel32Type::Call) {
         Ok(_) => {}
         Err(_) => return 27,
     }
-    match deploy_rel32_raw(0x0054AFB7 + 5, 0x0054AFD3, X86Rel32Type::Jump) {
+    match deploy_rel32_raw(addr(0x0054AFB7) + 5, addr(0x0054AFD3), X86Rel32Type::Jump) {
         Ok(_) => {}
         Err(_) => return 28,
     }
 
     debug!("Fix operations_network_client_send_pending_operations pending unlock");
-    match deploy_rel32_raw(0x0054B049, &unlock_pending_clean as *const c_void as _, X86Rel32Type::Call) {
+    match deploy_rel32_raw(addr(0x0054B049), &unlock_pending_clean as *const c_void as _, X86Rel32Type::Call) {
         Ok(_) => {}
         Err(_) => return 29,
     }
-    match deploy_rel32_raw(0x0054B063, &unlock_pending_clean as *const c_void as _, X86Rel32Type::Call) {
+    match deploy_rel32_raw(addr(0x0054B063), &unlock_pending_clean as *const c_void as _, X86Rel32Type::Call) {
         Ok(_) => {}
         Err(_) => return 30,
     }
-    match replace_slice_rwx(0x0054B049 + 5, &[0x90]) {
+    match replace_slice_rwx(addr(0x0054B049) + 5, &[0x90]) {
         Ok(_) => {}
         Err(_) => return 31,
     }
-    match replace_slice_rwx(0x0054B063 + 5, &[0x90]) {
+    match replace_slice_rwx(addr(0x0054B063) + 5, &[0x90]) {
         Ok(_) => {}
         Err(_) => return 32,
     }
