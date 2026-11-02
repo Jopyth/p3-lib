@@ -9,6 +9,7 @@ crate-type = ["cdylib", "rlib"]
 hooklet = { workspace = true }
 #hooklet = { path = "../../hooklet" }
 log = { workspace = true }
+p3-api = { path = "../p3-api" }
 win_dbg_logger = { workspace = true }
 
 [dependencies.windows]
@@ -16,4 +17,5 @@ version = "0.48"
 features = [
     "Win32_Foundation",
     "Win32_System_Memory",
+    "Win32_System_SystemServices",
 ]
