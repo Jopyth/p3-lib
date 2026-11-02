@@ -9,6 +9,7 @@ pub const SHIPS_ADDRESS: u32 = 0x006dd7a0;
 
 #[derive(Clone, Debug)]
 pub struct ShipsPtr {
+    /// The address in the international exe. Use `get_address()`, which translates it to the running build.
     pub address: u32,
 }
 
@@ -62,6 +63,6 @@ impl ShipsPtr {
 
 impl P3Pointer for ShipsPtr {
     fn get_address(&self) -> u32 {
-        self.address
+        crate::addr(self.address)
     }
 }

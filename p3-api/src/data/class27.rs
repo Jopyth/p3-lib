@@ -16,7 +16,7 @@ impl Default for Class27Ptr {
 impl Class27Ptr {
     pub fn new() -> Self {
         Self {
-            address: unsafe { *CLASS27_PTR_ADDRESS },
+            address: unsafe { *crate::addr_ptr(CLASS27_PTR_ADDRESS) },
         }
     }
 

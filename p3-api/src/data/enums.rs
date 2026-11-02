@@ -212,14 +212,14 @@ impl WareId {
     }
 
     pub unsafe fn get_base_price(&self) -> f32 {
-        let base_price_ptr: *const f32 = 0x00673A18 as _;
+        let base_price_ptr: *const f32 = crate::addr(0x00673A18) as _;
         *base_price_ptr.add(*self as usize)
     }
 }
 
 impl ShipType {
     pub unsafe fn get_base_speed(&self) -> u16 {
-        let base_speed_ptr: *const u16 = 0x0067366C as _;
+        let base_speed_ptr: *const u16 = crate::addr(0x0067366C) as _;
         *base_speed_ptr.add(*self as usize)
     }
 }

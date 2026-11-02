@@ -14,18 +14,18 @@ pub mod ui_town_hall_window;
 pub mod ui_trading_office_window;
 
 pub unsafe fn rect_clipper_stuff(rect: *const Rect) {
-    let function: extern "stdcall" fn(rect: *const Rect) = mem::transmute(0x004B9650);
+    let function: extern "stdcall" fn(rect: *const Rect) = mem::transmute(crate::addr(0x004B9650));
     function(rect)
 }
 
 pub fn draw_geometry(x1: i32, y1: i32, x2: i32, y2: i32) {
-    let function: extern "cdecl" fn(x1: i32, y1: i32, x2: i32, y2: i32) = unsafe { mem::transmute(0x004BD680) };
+    let function: extern "cdecl" fn(x1: i32, y1: i32, x2: i32, y2: i32) = unsafe { mem::transmute(crate::addr(0x004BD680)) };
     function(x1, y1, x2, y2)
 }
 
 pub unsafe fn draw_geometry_abs(x1: i32, y1: i32, x2: i32, y2: i32) {
     let class37 = Class37Ptr::new();
-    let function: extern "cdecl" fn(x1: i32, y1: i32, x2: i32, y2: i32) = unsafe { mem::transmute(0x004BD680) };
+    let function: extern "cdecl" fn(x1: i32, y1: i32, x2: i32, y2: i32) = unsafe { mem::transmute(crate::addr(0x004BD680)) };
     function(
         x1 - class37.get_offset_x() as i32 + class37.get_x(),
         y1 - class37.get_offset_y() as i32 + class37.get_y(),

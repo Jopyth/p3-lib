@@ -39,16 +39,16 @@ pub struct ShipyardLevelRequirements {
 }
 
 pub fn get_ship_costs() -> ShipCosts {
-    let ptr: *const ShipCosts = 0x0066DEB0 as _;
+    let ptr: *const ShipCosts = crate::addr(0x0066DEB0) as _;
     unsafe { (*ptr).clone() }
 }
 
 pub fn get_ship_capacities_raw() -> ShipCapacityRaw {
-    let ptr: *const ShipCapacityRaw = 0x00673838 as _;
+    let ptr: *const ShipCapacityRaw = crate::addr(0x00673838) as _;
     unsafe { (*ptr).clone() }
 }
 
 pub fn get_shipyard_level_requirements() -> &'static ShipyardLevelRequirements {
-    let ptr: *const ShipyardLevelRequirements = 0x00673818 as _;
+    let ptr: *const ShipyardLevelRequirements = crate::addr(0x00673818) as _;
     unsafe { &*ptr }
 }

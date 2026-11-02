@@ -16,7 +16,7 @@ impl Default for Class73Ptr {
 impl Class73Ptr {
     pub fn new() -> Self {
         Self {
-            address: unsafe { *CLASS73_PTR_ADDRESS },
+            address: unsafe { *crate::addr_ptr(CLASS73_PTR_ADDRESS) },
         }
     }
 

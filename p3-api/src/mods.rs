@@ -11,4 +11,6 @@ pub unsafe fn init_mod() {
         let trace = Backtrace::force_capture();
         error!("{}", trace)
     }));
+
+    crate::version::game_version();
 }

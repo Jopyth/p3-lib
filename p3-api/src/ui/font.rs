@@ -52,23 +52,23 @@ impl P3Pointer for DdrawFontContainerPtr {
 }
 
 pub fn ddraw_set_text_mode(mode: TextMode) {
-    let function: extern "cdecl" fn(mode: u32) = unsafe { mem::transmute(0x004BBA10) };
+    let function: extern "cdecl" fn(mode: u32) = unsafe { mem::transmute(crate::addr(0x004BBA10)) };
     function(mode as u32)
 }
 
 pub fn ddraw_set_font(font: DdrawFontPtr) {
-    let function: extern "cdecl" fn(font: *const c_void) = unsafe { mem::transmute(0x004BB8F0) };
+    let function: extern "cdecl" fn(font: *const c_void) = unsafe { mem::transmute(crate::addr(0x004BB8F0)) };
     function(font.address as _)
 }
 
 pub fn get_normal_font() -> DdrawFontPtr {
-    DdrawFontContainerPtr::new(0x006DCDD0).get_font()
+    DdrawFontContainerPtr::new(crate::addr(0x006DCDD0)).get_font()
 }
 
 pub fn get_header_font() -> DdrawFontPtr {
-    DdrawFontContainerPtr::new(0x006DCD28).get_font()
+    DdrawFontContainerPtr::new(crate::addr(0x006DCD28)).get_font()
 }
 
 pub fn get_scrollmap_town_name_font() -> DdrawFontPtr {
-    DdrawFontContainerPtr::new(0x006DCF20).get_font()
+    DdrawFontContainerPtr::new(crate::addr(0x006DCF20)).get_font()
 }

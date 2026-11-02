@@ -14,7 +14,7 @@ pub struct StaticTownDataPtr {
 impl StaticTownDataPtr {
     pub fn new(town_id: TownId) -> Self {
         Self {
-            address: TOWN_DATA_ADDRESS + town_id as u32 * TOWN_DATA_SIZE,
+            address: crate::addr(TOWN_DATA_ADDRESS) + town_id as u32 * TOWN_DATA_SIZE,
         }
     }
 

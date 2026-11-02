@@ -20,6 +20,7 @@ pub const TICKS_PER_MINUTE: f32 = TICKS_PER_HOUR / 60.0;
 
 #[derive(Clone, Debug)]
 pub struct GameWorldPtr {
+    /// The address in the international exe. Use `get_address()`, which translates it to the running build.
     pub address: u32,
 }
 
@@ -182,6 +183,6 @@ impl GameWorldPtr {
 
 impl P3Pointer for GameWorldPtr {
     fn get_address(&self) -> u32 {
-        self.address
+        crate::addr(self.address)
     }
 }

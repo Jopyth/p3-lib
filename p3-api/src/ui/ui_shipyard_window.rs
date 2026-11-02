@@ -18,7 +18,7 @@ impl Default for UIShipyardWindowPtr {
 impl UIShipyardWindowPtr {
     pub fn new() -> Self {
         Self {
-            address: unsafe { *STATIC_UI_SHIPYARD_WINDOW_PTR_ADDRESS },
+            address: unsafe { *crate::addr_ptr(STATIC_UI_SHIPYARD_WINDOW_PTR_ADDRESS) },
         }
     }
 
@@ -47,7 +47,7 @@ impl UIShipyardWindowPtr {
     }
 
     pub fn select_new_page(&self, new_page: i32) {
-        let ui_shipyard_window_set_new_page: extern "thiscall" fn(this: u32, new_page: i32) = unsafe { mem::transmute(0x005F4790) };
+        let ui_shipyard_window_set_new_page: extern "thiscall" fn(this: u32, new_page: i32) = unsafe { mem::transmute(crate::addr(0x005F4790)) };
         ui_shipyard_window_set_new_page(self.address, new_page)
     }
 }

@@ -16,6 +16,9 @@ pub mod ship;
 pub mod ships;
 pub mod town;
 pub mod ui;
+pub mod version;
+
+pub use version::{addr, addr_ptr};
 
 #[derive(Clone, Debug)]
 #[repr(C)]
@@ -45,6 +48,6 @@ pub unsafe fn latin1_ptr_to_string(mut s: *const u8) -> String {
 }
 
 pub unsafe fn free(address: u32) {
-    let orig: extern "cdecl" fn(ptr: u32) = std::mem::transmute(0x0063A1B6);
+    let orig: extern "cdecl" fn(ptr: u32) = std::mem::transmute(crate::addr(0x0063A1B6));
     orig(address);
 }
