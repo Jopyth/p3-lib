@@ -21,6 +21,8 @@ translates them for the running build, using the tables in `p3-api/src/version/`
 
 ## Supporting the German version
 
+How to play with mods and the rules for writing them are in the [main README](../README.md).
+
 ```
 python addrmap.py --intl path\to\Patrician3.exe --target "path\to\Patrizier 2.exe" --rs ..\p3-api\src\version\german.rs --report addrmap_german.md
 python add_import.py "path\to\Patrizier 2.exe" "path\to\Patrizier 2_modloader.exe"
