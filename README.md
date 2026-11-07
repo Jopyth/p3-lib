@@ -1,6 +1,6 @@
 # p3-lib
 
-A framework for modding Patrician 3, a mod loader, and the mods built with it.
+A framework for modding Patrician 3, a mod loader, and the mods built with it. All credit should go to Trolldemorted who built the mods and [p3-lib](https://github.com/P3Modding/p3-lib). I just wanted to make them work for my old CD version with the help of Claude.
 
 ## Supported game builds
 
