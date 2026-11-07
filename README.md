@@ -15,17 +15,15 @@ game build" and the game starts without mods.
 
 ## Playing with mods
 
-1. Get `p3_modloader.dll` and the mod DLLs: from a release of this repository
-   (`p3_modloader.dll` and `mods.zip`), or build them yourself (see below). The same DLLs
-   work with both builds.
-2. Make a mod loader exe next to the game's exe. It is a copy of the exe that also loads
-   `p3_modloader.dll`. You need Python 3.10 or newer with `pefile`
-   (`pip install pefile`):
-
-   ```
-   python py-tools/add_import.py "Patrizier 2.exe" "Patrizier 2_modloader.exe"
-   python py-tools/add_import.py Patrician3.exe Patrician3_modloader.exe
-   ```
+1. Get `p3_modloader.dll`, `modloader-installer.exe` and the mod DLLs: from a release of
+   this repository (`mods.zip` holds the mods), or build them yourself (see below). The
+   same files work with both builds.
+2. Make a mod loader exe: put `modloader-installer.exe` into the game folder and
+   double-click it. It finds `Patrizier 2.exe` or `Patrician3.exe`, checks that the mods
+   support it, and creates `Patrizier 2_modloader.exe` or `Patrician3_modloader.exe`: a
+   copy of the exe that also loads `p3_modloader.dll`. It never changes the game's own exe.
+   From a command line you can pass the exe and options, see
+   `modloader-installer.exe --help`. With Python, `py-tools/add_import.py` does the same.
 
    Don't share the generated exe: it contains the game.
 3. Put `p3_modloader.dll` next to the exe and the mod DLLs into a folder `mods` next to it.

@@ -15,7 +15,7 @@ translates them for the running build, using the tables in `p3-api/src/version/`
 | Tool | Purpose |
 |---|---|
 | `addrmap.py` | Finds every address used in `p3-api`, `p3-modloader` and the mods in another build and writes the Rust table. Run it again after adding an address; `cargo test -p p3-api --lib` fails otherwise. |
-| `add_import.py` | Makes a mod loader exe for any build: the exe plus an import of `p3_modloader.dll`. |
+| `add_import.py` | Makes a mod loader exe for any build: the exe plus an import of `p3_modloader.dll`. Players use the Rust version `modloader-installer.exe` instead, which needs no Python and gives the same result. |
 | `debuglog.py` | Starts the game under a minimal debugger and prints the `OutputDebugString` log, crashes and message boxes. Can save a screenshot or a memory dump. |
 | `patchcheck.py` | Starts both builds with their loader exes and checks that every mod applied the same patches in both. |
 

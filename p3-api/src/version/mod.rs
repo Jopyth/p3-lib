@@ -98,8 +98,8 @@ fn detect_game_version() -> GameVersion {
             return GameVersion::Unknown;
         }
     };
-    match KNOWN_BUILDS.iter().find(|(known, _)| *known == hash) {
-        Some(&(_, version)) => {
+    match known_version(&hash) {
+        Some(version) => {
             info!("Detected {version:?} game build (.text md5 {hash})");
             version
         }
@@ -117,8 +117,22 @@ fn text_section_md5() -> Result<String, String> {
 
 fn file_text_section_md5(path: &std::path::Path) -> Result<String, String> {
     let exe = fs::read(path).map_err(|e| format!("reading {} failed: {e}", path.display()))?;
-    let text = text_section(&exe).ok_or_else(|| format!("{} has no .text section", path.display()))?;
-    Ok(Md5::digest(text).iter().map(|b| format!("{b:02x}")).collect())
+    exe_text_md5(&exe).ok_or_else(|| format!("{} has no .text section", path.display()))
+}
+
+fn known_version(text_md5: &str) -> Option<GameVersion> {
+    KNOWN_BUILDS.iter().find(|(known, _)| *known == text_md5).map(|&(_, version)| version)
+}
+
+/// The MD5 of the raw `.text` section of an exe (its file contents), as lowercase hex.
+pub fn exe_text_md5(exe: &[u8]) -> Option<String> {
+    text_section(exe).map(|text| Md5::digest(text).iter().map(|b| format!("{b:02x}")).collect())
+}
+
+/// The build an exe (its file contents) belongs to. Works for any exe, not only the running
+/// one, e.g. for tools that prepare a game folder.
+pub fn version_of_exe(exe: &[u8]) -> GameVersion {
+    exe_text_md5(exe).and_then(|hash| known_version(&hash)).unwrap_or(GameVersion::Unknown)
 }
 
 /// The raw data of the `.text` section of a PE file.
