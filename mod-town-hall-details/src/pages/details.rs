@@ -2,16 +2,22 @@ use num_traits::cast::FromPrimitive;
 use p3_api::{
     data::{ddraw_set_constant_color, ddraw_set_text_mode, enums::WareId, fill_p3_string, render_window_title, ui_render_text_at},
     game_world::GAME_WORLD_PTR,
+    text::{latin1, Localized},
     ui::{font, ui_town_hall_window::UITownHallWindowPtr},
 };
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 
 const COL_OFFSETS: &[i32; 4] = &[90, 180, 270, 360];
-pub static TITLE: &CStr = c"Details";
-pub static GOODS: &CStr = c"Goods";
-pub static STOCK: &CStr = c"Stock";
-pub static CONSUMPTION: &CStr = c"Consumption";
-pub static RATIO: &CStr = c"Ratio";
+pub static TITLE: Localized = Localized { en: "Details", de: "Details" };
+pub static GOODS: Localized = Localized { en: "Goods", de: "Waren" };
+pub static STOCK: Localized = Localized { en: "Stock", de: "Bestand" };
+pub static CONSUMPTION: Localized = Localized {
+    en: "Consumption",
+    de: "Verbrauch",
+};
+pub static RATIO: Localized = Localized {
+    en: "Ratio", de: "Verhältnis"
+};
 
 #[derive(Debug, Default)]
 struct HanseaticWareData {
@@ -62,7 +68,7 @@ pub(crate) unsafe fn draw_page(window: UITownHallWindowPtr) {
     hanse_data.sort_by_key(|a| a.get_ratio());
 
     let mut title_p3_string: u32 = 0;
-    fill_p3_string((&mut title_p3_string) as *mut _ as _, TITLE.to_bytes());
+    fill_p3_string((&mut title_p3_string) as *mut _ as _, TITLE.get().to_bytes());
     render_window_title(title_p3_string as _, window.address as _);
 
     ddraw_set_constant_color(0xff000000);
@@ -71,10 +77,10 @@ pub(crate) unsafe fn draw_page(window: UITownHallWindowPtr) {
     let mut y = window.get_y() + 60;
 
     font::ddraw_set_font(font::get_header_font());
-    ui_render_text_at(x + COL_OFFSETS[0], y, GOODS.to_bytes());
-    ui_render_text_at(x + COL_OFFSETS[1], y, STOCK.to_bytes());
-    ui_render_text_at(x + COL_OFFSETS[2], y, CONSUMPTION.to_bytes());
-    ui_render_text_at(x + COL_OFFSETS[3], y, RATIO.to_bytes());
+    ui_render_text_at(x + COL_OFFSETS[0], y, GOODS.get().to_bytes());
+    ui_render_text_at(x + COL_OFFSETS[1], y, STOCK.get().to_bytes());
+    ui_render_text_at(x + COL_OFFSETS[2], y, CONSUMPTION.get().to_bytes());
+    ui_render_text_at(x + COL_OFFSETS[3], y, RATIO.get().to_bytes());
     y += 20;
 
     let mut effective_prods_count = 0;
@@ -101,7 +107,7 @@ pub(crate) unsafe fn draw_page(window: UITownHallWindowPtr) {
         if ware == WareId::Spices {
             ddraw_set_constant_color(0xFF660000);
         }
-        ui_render_text_at(x + COL_OFFSETS[0], y, CString::new(format!("{ware:?}")).unwrap().to_bytes());
+        ui_render_text_at(x + COL_OFFSETS[0], y, latin1(&ware.get_name()).to_bytes());
         ui_render_text_at(x + COL_OFFSETS[1], y, CString::new(format!("{}", data.total_wares)).unwrap().to_bytes());
         ui_render_text_at(x + COL_OFFSETS[2], y, CString::new(format!("{}", data.total_consumption)).unwrap().to_bytes());
         ui_render_text_at(x + COL_OFFSETS[3], y, CString::new(format!("{}", ratio)).unwrap().to_bytes());

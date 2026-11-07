@@ -14,6 +14,7 @@ pub mod operations;
 pub mod scheduled_tasks;
 pub mod ship;
 pub mod ships;
+pub mod text;
 pub mod town;
 pub mod ui;
 pub mod version;

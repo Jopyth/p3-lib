@@ -215,7 +215,37 @@ impl WareId {
         let base_price_ptr: *const f32 = crate::addr(0x00673A18) as _;
         *base_price_ptr.add(*self as usize)
     }
+
+    /// The ware's name in the game's language, starting with a capital letter (the English
+    /// names are lowercase in the game). Encode it with [`crate::text::latin1`] for display.
+    pub fn get_name(&self) -> String {
+        if *self as usize >= WARE_NAMES_COUNT {
+            return format!("{self:?}");
+        }
+        let name = unsafe {
+            let names: *const *const u8 = crate::addr(WARE_NAMES_ADDRESS) as _;
+            crate::latin1_ptr_to_string(*names.add(*self as usize))
+        };
+        let mut chars = name.chars();
+        match chars.next() {
+            Some(first) => first.to_uppercase().chain(chars).collect(),
+            None => name,
+        }
+    }
+
+    /// The 20 trade wares in the order the game lists them: alphabetical by name in the game's
+    /// language. The game sorts them at startup.
+    pub fn get_display_order() -> Vec<WareId> {
+        let order: *const u8 = crate::addr(WARE_DISPLAY_ORDER_ADDRESS) as _;
+        (0..20).filter_map(|i| num_traits::FromPrimitive::from_u8(unsafe { *order.add(i) })).collect()
+    }
 }
+
+/// Pointers to the names of the 20 trade wares and 3 weapons, in [`WareId`] order.
+const WARE_NAMES_ADDRESS: u32 = 0x006C0BB0;
+const WARE_NAMES_COUNT: usize = 23;
+/// Ware indices in display order, filled by the game at startup.
+const WARE_DISPLAY_ORDER_ADDRESS: u32 = 0x00698538;
 
 impl ShipType {
     pub unsafe fn get_base_speed(&self) -> u16 {
