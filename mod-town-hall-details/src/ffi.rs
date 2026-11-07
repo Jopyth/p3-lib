@@ -11,24 +11,29 @@ use log::debug;
 use p3_api::ui::ui_town_hall_window::UITownHallWindowPtr;
 use windows::core::PCSTR;
 
-const TOWN_HALL_WINDOW_OPEN_POINTER_OFFSET: u32 = UITownHallWindowPtr::VTABLE_OFFSET + 0x120;
+const TOWN_HALL_WINDOW_OPEN_VTABLE_SLOT: u32 = 0x120;
 pub static TOWN_HALL_WINDOW_OPEN_HOOK_PTR: AtomicPtr<FunctionPointerHook> = AtomicPtr::new(std::ptr::null_mut());
 
 const TOWN_HALL_SIDEPANEL_SET_SELECTED_PAGE_PATCH_OFFSET: u32 = 0x1A94BC;
 pub static TOWN_HALL_SIDEPANEL_SET_SELECTED_PAGE_HOOK_PTR: AtomicPtr<CallRel32Hook> = AtomicPtr::new(std::ptr::null_mut());
 
 const LOAD_TOWN_HALL_SELECTED_PAGE_PATCH_ADDRESS: u32 = 0x005E09AC;
-static LOAD_TOWN_HALL_SELECTED_PAGE_CONTINUATION: u32 = 0x005E09B2;
+static mut LOAD_TOWN_HALL_SELECTED_PAGE_CONTINUATION: u32 = 0x005E09B2;
 
 #[no_mangle]
 pub unsafe extern "C" fn start() -> u32 {
     let _ = log::set_logger(&win_dbg_logger::DEBUGGER_LOGGER);
     log::set_max_level(log::LevelFilter::Trace);
 
+    if !p3_api::version::is_supported() {
+        return p3_api::version::UNSUPPORTED_BUILD;
+    }
+    LOAD_TOWN_HALL_SELECTED_PAGE_CONTINUATION = p3_api::addr(LOAD_TOWN_HALL_SELECTED_PAGE_CONTINUATION);
+
     debug!("Hooking town hall window's open function through vtable");
     match hook_function_pointer_width_module(
         PCSTR::from_raw(ptr::null()),
-        TOWN_HALL_WINDOW_OPEN_POINTER_OFFSET,
+        p3_api::version::addr_rva(UITownHallWindowPtr::VTABLE_OFFSET) + TOWN_HALL_WINDOW_OPEN_VTABLE_SLOT,
         town_hall_window_open_hook as usize as u32,
     ) {
         Ok(hook) => {
@@ -42,7 +47,7 @@ pub unsafe extern "C" fn start() -> u32 {
 
     debug!("Hooking sidepanel's call to ui_town_hall_window_set_selected_page");
     match hook_call_rel32(
-        TOWN_HALL_SIDEPANEL_SET_SELECTED_PAGE_PATCH_OFFSET,
+        p3_api::version::addr_rva(TOWN_HALL_SIDEPANEL_SET_SELECTED_PAGE_PATCH_OFFSET),
         town_hall_window_set_selected_page_hook as usize as u32,
     ) {
         Ok(hook) => {
@@ -56,7 +61,7 @@ pub unsafe extern "C" fn start() -> u32 {
 
     debug!("Detouring town hall's rendering function at the selected page switch");
     if deploy_rel32_raw(
-        LOAD_TOWN_HALL_SELECTED_PAGE_PATCH_ADDRESS as _,
+        p3_api::addr(LOAD_TOWN_HALL_SELECTED_PAGE_PATCH_ADDRESS),
         (&load_town_hall_selected_page_detour) as *const _ as _,
         X86Rel32Type::Jump,
     )

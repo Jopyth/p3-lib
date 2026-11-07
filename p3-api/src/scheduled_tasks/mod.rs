@@ -10,6 +10,7 @@ pub const SCHEDULED_TASKS_PTR: ScheduledTasksPtr = ScheduledTasksPtr::new();
 
 #[derive(Clone, Debug, Copy)]
 pub struct ScheduledTasksPtr {
+    /// The address in the international exe. Use `get_address()`, which translates it to the running build.
     pub address: u32,
 }
 
@@ -32,13 +33,13 @@ impl ScheduledTasksPtr {
     }
 
     pub unsafe fn get_merchant_alderman_mission_task_index(&self, merchant_index: i32) -> i16 {
-        let func: extern "thiscall" fn(scheduled_tasks: u32, merchant_index: i32) -> i16 = mem::transmute(0x004EC694);
-        func(self.address, merchant_index)
+        let func: extern "thiscall" fn(scheduled_tasks: u32, merchant_index: i32) -> i16 = mem::transmute(crate::addr(0x004EC694));
+        func(self.get_address(), merchant_index)
     }
 }
 
 impl P3Pointer for ScheduledTasksPtr {
     fn get_address(&self) -> u32 {
-        self.address
+        crate::addr(self.address)
     }
 }

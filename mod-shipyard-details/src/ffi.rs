@@ -1,6 +1,6 @@
 use std::{
     arch::global_asm,
-    ffi::{c_void, CStr, CString},
+    ffi::{c_void, CString},
 };
 
 use hooklet::windows::x86::{deploy_rel32_raw, X86Rel32Type};
@@ -11,29 +11,48 @@ use p3_api::{
         ui_render_text_at,
     },
     game_world::GAME_WORLD_PTR,
+    text::Localized,
     ui::{
         font::{self, get_header_font, get_normal_font},
         ui_shipyard_window::UIShipyardWindowPtr,
     },
 };
 
-pub static TITLE: &CStr = c"Details";
-pub static EMPLOYEES: &CStr = c"Employees";
-pub static EXPERIENCE: &CStr = c"Experience (scaled)";
-pub static PENDING_EXPERIENCE: &CStr = c"Pending Experience (scaled)";
-pub static UTILIZATION_MARKUP: &CStr = c"Utilization Markup";
-pub static SNAIKKA: &CStr = c"Snaikka";
-pub static CRAYER: &CStr = c"Crayer";
-pub static COG: &CStr = c"Cog";
-pub static HOLK: &CStr = c"Holk";
-pub static QUALITY_LEVEL: &CStr = c"Quality Level";
-pub static REQUIRED_XP: &CStr = c"Required XP";
+pub static TITLE: Localized = Localized { en: "Details", de: "Details" };
+pub static EMPLOYEES: Localized = Localized {
+    en: "Employees",
+    de: "Angestellte",
+};
+pub static EXPERIENCE: Localized = Localized {
+    en: "Experience (scaled)",
+    de: "Erfahrung (skaliert)",
+};
+pub static PENDING_EXPERIENCE: Localized = Localized {
+    en: "Pending Experience (scaled)",
+    de: "Ausstehende Erfahrung (skaliert)",
+};
+pub static UTILIZATION_MARKUP: Localized = Localized {
+    en: "Utilization Markup",
+    de: "Auslastungsaufschlag",
+};
+pub static SNAIKKA: Localized = Localized { en: "Snaikka", de: "Schnigge" };
+pub static CRAYER: Localized = Localized { en: "Crayer", de: "Kraier" };
+pub static COG: Localized = Localized { en: "Cog", de: "Kogge" };
+pub static HOLK: Localized = Localized { en: "Holk", de: "Holk" };
+pub static QUALITY_LEVEL: Localized = Localized {
+    en: "Quality Level",
+    de: "Qualitätsstufe",
+};
+pub static REQUIRED_XP: Localized = Localized {
+    en: "Required XP",
+    de: "Nötige Erfahrung",
+};
 
 const SHIPYARD_WINDOW_OPEN_PATCH_ADDRESS: u32 = 0x005ADA56;
-static SHIPYARD_WINDOW_OPEN_CONTINUATION: u32 = 0x005ADA93;
+static mut SHIPYARD_WINDOW_OPEN_CONTINUATION: u32 = 0x005ADA93;
 
 const LOAD_SHIPYARD_SELECTED_PAGE_PATCH_ADDRESS: u32 = 0x005F4320;
-static LOAD_SHIPYARD_SELECTED_PAGE_CONTINUATION: u32 = 0x005F4326;
+static mut LOAD_SHIPYARD_SELECTED_PAGE_CONTINUATION: u32 = 0x005F4326;
 
 const COL_OFFSETS_4: &[i32; 4] = &[60, 120, 180, 240];
 
@@ -42,8 +61,14 @@ pub unsafe extern "C" fn start() -> u32 {
     let _ = log::set_logger(&win_dbg_logger::DEBUGGER_LOGGER);
     log::set_max_level(log::LevelFilter::Trace);
 
+    if !p3_api::version::is_supported() {
+        return p3_api::version::UNSUPPORTED_BUILD;
+    }
+    SHIPYARD_WINDOW_OPEN_CONTINUATION = p3_api::addr(SHIPYARD_WINDOW_OPEN_CONTINUATION);
+    LOAD_SHIPYARD_SELECTED_PAGE_CONTINUATION = p3_api::addr(LOAD_SHIPYARD_SELECTED_PAGE_CONTINUATION);
+
     if deploy_rel32_raw(
-        SHIPYARD_WINDOW_OPEN_PATCH_ADDRESS as _,
+        p3_api::addr(SHIPYARD_WINDOW_OPEN_PATCH_ADDRESS),
         (&ui_shipyard_window_open_detour) as *const _ as _,
         X86Rel32Type::Jump,
     )
@@ -53,7 +78,7 @@ pub unsafe extern "C" fn start() -> u32 {
     }
 
     if deploy_rel32_raw(
-        LOAD_SHIPYARD_SELECTED_PAGE_PATCH_ADDRESS as _,
+        p3_api::addr(LOAD_SHIPYARD_SELECTED_PAGE_PATCH_ADDRESS),
         (&load_shipyard_selected_page_detour) as *const _ as _,
         X86Rel32Type::Jump,
     )
@@ -94,7 +119,7 @@ pub unsafe extern "thiscall" fn shipyard_rendering_hook() -> i32 {
         class48.set_gradient_y(200);
 
         let mut title_p3_string: u32 = 0;
-        fill_p3_string((&mut title_p3_string) as *mut _ as _, TITLE.to_bytes());
+        fill_p3_string((&mut title_p3_string) as *mut _ as _, TITLE.get().to_bytes());
         render_window_title(title_p3_string as _, window.address as _);
 
         ddraw_set_constant_color(0xff000000);
@@ -103,36 +128,36 @@ pub unsafe extern "thiscall" fn shipyard_rendering_hook() -> i32 {
         let x = window.get_x() + 200;
         let mut y = window.get_y() + 200;
 
-        ui_render_text_at(x, y, EMPLOYEES.to_bytes());
+        ui_render_text_at(x, y, EMPLOYEES.get().to_bytes());
         let employees_cstring = CString::new(format!("{}", shipyard_facility.get_employees())).unwrap();
         ui_render_text_at(x + 100, y, employees_cstring.to_bytes());
         y += 20;
 
-        ui_render_text_at(x, y, UTILIZATION_MARKUP.to_bytes());
+        ui_render_text_at(x, y, UTILIZATION_MARKUP.get().to_bytes());
         let utilization_markup_cstring = CString::new(format!("{:.2}", shipyard.get_utilization_markup())).unwrap();
         ui_render_text_at(x + 100, y, utilization_markup_cstring.to_bytes());
         y += 20;
 
-        ui_render_text_at(x, y, PENDING_EXPERIENCE.to_bytes());
+        ui_render_text_at(x, y, PENDING_EXPERIENCE.get().to_bytes());
         let pending_experience_cstring = CString::new(format!("{:.2}", shipyard.get_pending_experience() as f32 / 2800.0)).unwrap();
         ui_render_text_at(x + 100, y, pending_experience_cstring.to_bytes());
         y += 20;
 
-        ui_render_text_at(x, y, EXPERIENCE.to_bytes());
+        ui_render_text_at(x, y, EXPERIENCE.get().to_bytes());
         let experience_cstring = CString::new(format!("{:.2}", shipyard.get_experience() as f32 / 2800.0)).unwrap();
         ui_render_text_at(x + 100, y, experience_cstring.to_bytes());
         y += 20;
 
         font::ddraw_set_font(get_header_font());
         let table_x = window.get_x() + 100;
-        ui_render_text_at(table_x + COL_OFFSETS_4[0], y, SNAIKKA.to_bytes());
-        ui_render_text_at(table_x + COL_OFFSETS_4[1], y, CRAYER.to_bytes());
-        ui_render_text_at(table_x + COL_OFFSETS_4[2], y, COG.to_bytes());
-        ui_render_text_at(table_x + COL_OFFSETS_4[3], y, HOLK.to_bytes());
+        ui_render_text_at(table_x + COL_OFFSETS_4[0], y, SNAIKKA.get().to_bytes());
+        ui_render_text_at(table_x + COL_OFFSETS_4[1], y, CRAYER.get().to_bytes());
+        ui_render_text_at(table_x + COL_OFFSETS_4[2], y, COG.get().to_bytes());
+        ui_render_text_at(table_x + COL_OFFSETS_4[3], y, HOLK.get().to_bytes());
         y += 20;
 
         font::ddraw_set_font(get_normal_font());
-        ui_render_text_at(table_x, y, QUALITY_LEVEL.to_bytes());
+        ui_render_text_at(table_x, y, QUALITY_LEVEL.get().to_bytes());
         let snaikka_cstring = CString::new(format!("{}", current_quality_levels.snaikka_level)).unwrap();
         ui_render_text_at(table_x + COL_OFFSETS_4[0], y, snaikka_cstring.to_bytes());
         let crayer_cstring = CString::new(format!("{}", current_quality_levels.craier_level)).unwrap();
@@ -143,7 +168,7 @@ pub unsafe extern "thiscall" fn shipyard_rendering_hook() -> i32 {
         ui_render_text_at(table_x + COL_OFFSETS_4[3], y, holk_cstring.to_bytes());
         y += 20;
 
-        ui_render_text_at(table_x, y, REQUIRED_XP.to_bytes());
+        ui_render_text_at(table_x, y, REQUIRED_XP.get().to_bytes());
         if current_quality_levels.snaikka_level < 3 {
             let snaikka_cstring = CString::new(format!("{}", reqs.snaikka[next_snaikka_level])).unwrap();
             ui_render_text_at(table_x + COL_OFFSETS_4[0], y, snaikka_cstring.to_bytes());

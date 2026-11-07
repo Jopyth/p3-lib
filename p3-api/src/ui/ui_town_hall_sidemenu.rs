@@ -14,9 +14,9 @@ impl Default for UITownHallSidemenuPtr {
 }
 
 impl UITownHallSidemenuPtr {
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
-            address: unsafe { *STATIC_UI_TOWN_HALL_SIDEMENU_PTR_ADDRESS },
+            address: unsafe { *crate::addr_ptr(STATIC_UI_TOWN_HALL_SIDEMENU_PTR_ADDRESS) },
         }
     }
 

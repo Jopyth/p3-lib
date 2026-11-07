@@ -8,6 +8,7 @@ crate-type = ["cdylib"]
 name="fix_market_hall_production_town"
 
 [dependencies]
+p3-api = { path = "../p3-api" }
 log = { workspace = true }
 win_dbg_logger = { workspace = true }
 

@@ -1,0 +1,8 @@
+[package]
+name = "modloader-installer"
+edition = "2021"
+version.workspace = true
+
+[dependencies]
+clap = { workspace = true }
+p3-api = { path = "../p3-api" }

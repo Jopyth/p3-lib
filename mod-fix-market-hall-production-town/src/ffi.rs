@@ -5,10 +5,15 @@ use windows::Win32::{
     System::Memory::{VirtualProtect, PAGE_EXECUTE_READWRITE, PAGE_PROTECTION_FLAGS},
 };
 pub static TITLE: &str = concat!(" Weekly production (fixed)", "\0");
+pub static TITLE_GERMAN: &str = concat!(" Wochenproduktion (korrigiert)", "\0");
 const WEEKLY_PRODUCTION_STRING_PTR: *mut *const u8 = 0x006A081C as _;
 static SEVEN: f32 = 7.0;
-static FTOL_ADDRESS: u32 = 0x00639C28;
-static CONTINUATION_ADDRESS: u32 = 0x005DEACC;
+// The game's own constants, which the original code reads from .rdata.
+static BARREL_UNITS: f32 = 200.0;
+static BUNDLE_UNITS: f32 = 2000.0;
+static HALF: f64 = 0.5;
+static mut FTOL_ADDRESS: u32 = 0x00639C28;
+static mut CONTINUATION_ADDRESS: u32 = 0x005DEACC;
 static BARREL_PATCH_ADDRESS: u32 = 0x005DEA18;
 static BUNDLE_PATCH_ADDRESS: u32 = 0x005DEA73;
 
@@ -17,14 +22,20 @@ pub unsafe extern "C" fn start() -> u32 {
     let _ = log::set_logger(&win_dbg_logger::DEBUGGER_LOGGER);
     log::set_max_level(LevelFilter::Trace);
 
+    if !p3_api::version::is_supported() {
+        return p3_api::version::UNSUPPORTED_BUILD;
+    }
+    FTOL_ADDRESS = p3_api::addr(FTOL_ADDRESS);
+    CONTINUATION_ADDRESS = p3_api::addr(CONTINUATION_ADDRESS);
+
     // Patch barrels
     let barrel_patch_address: u32 = (&barrel_ware_detour) as *const _ as _;
-    let relative_barrel_patch_address: u32 = barrel_patch_address.wrapping_sub(BARREL_PATCH_ADDRESS) - 5; //TODO move pointer calcs to hooklet
+    let relative_barrel_patch_address: u32 = barrel_patch_address.wrapping_sub(p3_api::addr(BARREL_PATCH_ADDRESS)) - 5; //TODO move pointer calcs to hooklet
 
     let mut barrel_patch: [u8; 5] = [0; 5];
     barrel_patch[0] = 0xe9;
     barrel_patch[1..5].copy_from_slice(&relative_barrel_patch_address.to_le_bytes());
-    let patch_ptr: *mut u8 = BARREL_PATCH_ADDRESS as _;
+    let patch_ptr: *mut u8 = p3_api::addr(BARREL_PATCH_ADDRESS) as _;
 
     let mut old_flags: PAGE_PROTECTION_FLAGS = windows::Win32::System::Memory::PAGE_PROTECTION_FLAGS(0);
     if !VirtualProtect(patch_ptr as _, 5, PAGE_EXECUTE_READWRITE, &mut old_flags).as_bool() {
@@ -44,12 +55,12 @@ pub unsafe extern "C" fn start() -> u32 {
 
     // Patch bundles
     let bundle_patch_address: u32 = (&bundle_ware_detour) as *const _ as _;
-    let relative_bundle_patch_address: u32 = bundle_patch_address.wrapping_sub(BUNDLE_PATCH_ADDRESS) - 5; //TODO move pointer calcs to hooklet
+    let relative_bundle_patch_address: u32 = bundle_patch_address.wrapping_sub(p3_api::addr(BUNDLE_PATCH_ADDRESS)) - 5; //TODO move pointer calcs to hooklet
 
     let mut bundle_patch: [u8; 5] = [0; 5];
     bundle_patch[0] = 0xe9;
     bundle_patch[1..5].copy_from_slice(&relative_bundle_patch_address.to_le_bytes());
-    let patch_ptr: *mut u8 = BUNDLE_PATCH_ADDRESS as _;
+    let patch_ptr: *mut u8 = p3_api::addr(BUNDLE_PATCH_ADDRESS) as _;
 
     let mut old_flags: PAGE_PROTECTION_FLAGS = windows::Win32::System::Memory::PAGE_PROTECTION_FLAGS(0);
     if !VirtualProtect(patch_ptr as _, 5, PAGE_EXECUTE_READWRITE, &mut old_flags).as_bool() {
@@ -68,7 +79,11 @@ pub unsafe extern "C" fn start() -> u32 {
     }
 
     // Patch title
-    *WEEKLY_PRODUCTION_STRING_PTR = TITLE.as_ptr();
+    let title = match p3_api::version::game_version() {
+        p3_api::version::GameVersion::German => TITLE_GERMAN,
+        _ => TITLE,
+    };
+    *(p3_api::addr(WEEKLY_PRODUCTION_STRING_PTR as u32) as *mut *const u8) = title.as_ptr();
     0
 }
 
@@ -87,24 +102,26 @@ lea    ebp,[ecx+edx*2]
 fild   DWORD PTR [esi+ebp*4+0x4]
 fstp   DWORD PTR [esp+0x20]
 fld    DWORD PTR [esp+0x20]
-fdiv   DWORD PTR ds:0x66a91c
-fadd   QWORD PTR ds:0x66a7d0
+fdiv   DWORD PTR ds:{barrel_units}
+fadd   QWORD PTR ds:{half}
 call   [{ftol_addresss}]
 fild   DWORD PTR [esi+ebp*4+0xc4]
 mov    edi,eax
 fstp   DWORD PTR [esp+0x20]
 fld    DWORD PTR [esp+0x20]
-fdiv   DWORD PTR ds:0x66a91c
+fdiv   DWORD PTR ds:{barrel_units}
 fmul   DWORD PTR ds:{seven}
-fadd   QWORD PTR ds:0x66a7d0
+fadd   QWORD PTR ds:{half}
 call   [{ftol_addresss}]
 fild   DWORD PTR [esp+0x18]
 fstp   DWORD PTR [esp+0x20]
 fld    DWORD PTR [esp+0x20]
-fdiv   DWORD PTR ds:0x66a91c
+fdiv   DWORD PTR ds:{barrel_units}
 jmp    [{continuation_address}]
 ",
 barrel_ware_detour = sym barrel_ware_detour,
+barrel_units = sym BARREL_UNITS,
+half = sym HALF,
 ftol_addresss = sym FTOL_ADDRESS,
 seven = sym SEVEN,
 continuation_address = sym CONTINUATION_ADDRESS);
@@ -119,24 +136,26 @@ lea    ebp,[ecx+edx*2]
 fild   DWORD PTR [esi+ebp*4+0x4]
 fstp   DWORD PTR [esp+0x20]
 fld    DWORD PTR [esp+0x20]
-fdiv   DWORD PTR ds:0x66a918
-fadd   QWORD PTR ds:0x66a7d0
+fdiv   DWORD PTR ds:{bundle_units}
+fadd   QWORD PTR ds:{half}
 call   [{ftol_addresss}]
 fild   DWORD PTR [esi+ebp*4+0xc4]
 mov    edi,eax
 fstp   DWORD PTR [esp+0x20]
 fld    DWORD PTR [esp+0x20]
-fdiv   DWORD PTR ds:0x66a918
+fdiv   DWORD PTR ds:{bundle_units}
 fmul   DWORD PTR ds:{seven}
-fadd   QWORD PTR ds:0x66a7d0
+fadd   QWORD PTR ds:{half}
 call   [{ftol_addresss}]
 fild   DWORD PTR [esp+0x18]
 fstp   DWORD PTR [esp+0x20]
 fld    DWORD PTR [esp+0x20]
-fdiv   DWORD PTR ds:0x66a918 
+fdiv   DWORD PTR ds:{bundle_units} 
 jmp    [{continuation_address}]
 ",
 bundle_ware_detour = sym bundle_ware_detour,
+bundle_units = sym BUNDLE_UNITS,
+half = sym HALF,
 ftol_addresss = sym FTOL_ADDRESS,
 seven = sym SEVEN,
 continuation_address = sym CONTINUATION_ADDRESS);

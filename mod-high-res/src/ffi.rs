@@ -16,23 +16,23 @@ use p3_api::{
 const FULLHD_STRING: &CStr = c"1920 x 1080";
 
 const CALCULATE_RESOLUTION_ON_OPTIONS_MENU_CLOSE_PATCH_ADDRESS: u32 = 0x00423BBD;
-static CALCULATE_RESOLUTION_ON_OPTIONS_MENU_CLOSE_CONTINUATION: u32 = 0x00423C00;
+static mut CALCULATE_RESOLUTION_ON_OPTIONS_MENU_CLOSE_CONTINUATION: u32 = 0x00423C00;
 
 // Overwrite calculated results from class24 resolution field
 const CALCULATE_RESOLUTION_BEFORE_SCENE_LOAD_PATCH_ADDRESS: u32 = 0x00432D1E;
-static CALCULATE_RESOLUTION_BEFORE_SCENE_LOAD_CONTINUATION: u32 = 0x00432D58;
+static mut CALCULATE_RESOLUTION_BEFORE_SCENE_LOAD_CONTINUATION: u32 = 0x00432D58;
 
 // Overwrite calculated results ui options field
 const CALCULATE_RESOLUTION_AFTER_SCENE_LOAD_PATCH_ADDRESS: u32 = 0x00463FBB;
-static CALCULATE_RESOLUTION_AFTER_SCENE_LOAD_CONTINUATION: u32 = 0x00463FFD;
+static mut CALCULATE_RESOLUTION_AFTER_SCENE_LOAD_CONTINUATION: u32 = 0x00463FFD;
 
 // Overwrite switch value and 1280x1024 UI values, if required
 const REPOSITION_UI_ELEMENTS_PATCH_ADDRESS: u32 = 0x00429AC0; // Detour instead of loading width
-static REPOSITION_UI_ELEMENTS_CONTINUATION_ADDRESS: u32 = 0x00429AC5; // Jump back to switch
+static mut REPOSITION_UI_ELEMENTS_CONTINUATION_ADDRESS: u32 = 0x00429AC5; // Jump back to switch
 
 // Overwrite top bar positioning switch resolution value
 const REPOSITION_UI_ELEMENTS_TOP_BAR_PATCH_ADDRESS: u32 = 0x00429FE0; // Detour instead of loading width
-static REPOSITION_UI_ELEMENTS_TOP_BAR_CONTINUATION_ADDRESS: u32 = 0x00429FE5; // Jump back to switch
+static mut REPOSITION_UI_ELEMENTS_TOP_BAR_CONTINUATION_ADDRESS: u32 = 0x00429FE5; // Jump back to switch
 
 static HOOK_PTR: AtomicPtr<CallRel32Hook> = AtomicPtr::new(std::ptr::null_mut());
 static DECODE_SUPPORTED_FILES_HOOK_PTR: AtomicPtr<CallRel32Hook> = AtomicPtr::new(std::ptr::null_mut());
@@ -46,8 +46,17 @@ pub unsafe extern "C" fn start() -> u32 {
     let _ = log::set_logger(&win_dbg_logger::DEBUGGER_LOGGER);
     log::set_max_level(log::LevelFilter::Trace);
 
+    if !p3_api::version::is_supported() {
+        return p3_api::version::UNSUPPORTED_BUILD;
+    }
+    CALCULATE_RESOLUTION_ON_OPTIONS_MENU_CLOSE_CONTINUATION = p3_api::addr(CALCULATE_RESOLUTION_ON_OPTIONS_MENU_CLOSE_CONTINUATION);
+    CALCULATE_RESOLUTION_BEFORE_SCENE_LOAD_CONTINUATION = p3_api::addr(CALCULATE_RESOLUTION_BEFORE_SCENE_LOAD_CONTINUATION);
+    CALCULATE_RESOLUTION_AFTER_SCENE_LOAD_CONTINUATION = p3_api::addr(CALCULATE_RESOLUTION_AFTER_SCENE_LOAD_CONTINUATION);
+    REPOSITION_UI_ELEMENTS_CONTINUATION_ADDRESS = p3_api::addr(REPOSITION_UI_ELEMENTS_CONTINUATION_ADDRESS);
+    REPOSITION_UI_ELEMENTS_TOP_BAR_CONTINUATION_ADDRESS = p3_api::addr(REPOSITION_UI_ELEMENTS_TOP_BAR_CONTINUATION_ADDRESS);
+
     if deploy_rel32_raw(
-        CALCULATE_RESOLUTION_ON_OPTIONS_MENU_CLOSE_PATCH_ADDRESS as _,
+        p3_api::addr(CALCULATE_RESOLUTION_ON_OPTIONS_MENU_CLOSE_PATCH_ADDRESS),
         (&calculate_resolution_after_options_screen) as *const _ as _,
         X86Rel32Type::Jump,
     )
@@ -58,7 +67,7 @@ pub unsafe extern "C" fn start() -> u32 {
 
     // Replace the mapping from class24 resolution field to width and height values
     if deploy_rel32_raw(
-        CALCULATE_RESOLUTION_BEFORE_SCENE_LOAD_PATCH_ADDRESS as _,
+        p3_api::addr(CALCULATE_RESOLUTION_BEFORE_SCENE_LOAD_PATCH_ADDRESS),
         (&calculate_resolution_before_scene_load) as *const _ as _,
         X86Rel32Type::Jump,
     )
@@ -69,7 +78,7 @@ pub unsafe extern "C" fn start() -> u32 {
 
     // Replace the mapping from ui options resolution field to width and height values
     if deploy_rel32_raw(
-        CALCULATE_RESOLUTION_AFTER_SCENE_LOAD_PATCH_ADDRESS as _,
+        p3_api::addr(CALCULATE_RESOLUTION_AFTER_SCENE_LOAD_PATCH_ADDRESS),
         (&calculate_resolution_after_scene_load) as *const _ as _,
         X86Rel32Type::Jump,
     )
@@ -80,7 +89,7 @@ pub unsafe extern "C" fn start() -> u32 {
 
     debug!("Deploying resolution dependent ui positioning patch");
     if deploy_rel32_raw(
-        REPOSITION_UI_ELEMENTS_PATCH_ADDRESS as _,
+        p3_api::addr(REPOSITION_UI_ELEMENTS_PATCH_ADDRESS),
         (&reposition_ui_elements) as *const _ as _,
         X86Rel32Type::Jump,
     )
@@ -91,7 +100,7 @@ pub unsafe extern "C" fn start() -> u32 {
 
     debug!("Deploying resolution dependent top bar ui positioning patch");
     if deploy_rel32_raw(
-        REPOSITION_UI_ELEMENTS_TOP_BAR_PATCH_ADDRESS as _,
+        p3_api::addr(REPOSITION_UI_ELEMENTS_TOP_BAR_PATCH_ADDRESS),
         (&reposition_ui_elements_top_bar) as *const _ as _,
         X86Rel32Type::Jump,
     )
@@ -102,7 +111,7 @@ pub unsafe extern "C" fn start() -> u32 {
 
     // Fix empty bottom right corner
     debug!("Deploying render_all_objects_hook");
-    match hook_call_rel32(0x28649, maybe_render_all_objects_hook as usize as u32) {
+    match hook_call_rel32(p3_api::version::addr_rva(0x28649), maybe_render_all_objects_hook as usize as u32) {
         Ok(hook) => {
             HOOK_PTR.store(Box::into_raw(Box::new(hook)), Ordering::SeqCst);
         }
@@ -121,7 +130,7 @@ pub unsafe extern "C" fn start() -> u32 {
 
     // Fix acceleration map
     debug!("Deploying load screen settings from accelMap.ini");
-    match hook_call_rel32(0x12C5, class73_place_ui_element_hook as usize as u32) {
+    match hook_call_rel32(p3_api::version::addr_rva(0x12C5), class73_place_ui_element_hook as usize as u32) {
         Ok(hook) => {
             debug!("Hook {hook:?} set");
             LOAD_ACCEL_MAP_INI_HOOK_PTR.store(Box::into_raw(Box::new(hook)), Ordering::SeqCst);
@@ -129,7 +138,7 @@ pub unsafe extern "C" fn start() -> u32 {
         Err(_) => return 8,
     }
 
-    let resolution_pcstr_ptr: *mut *const i8 = 0x0069AE40 as _;
+    let resolution_pcstr_ptr: *mut *const i8 = p3_api::addr(0x0069AE40) as _;
     *resolution_pcstr_ptr = FULLHD_STRING.as_ptr();
 
     debug!("Mod loaded successfully");
@@ -187,7 +196,7 @@ pub unsafe extern "cdecl" fn reposition_ui_elements_top_bar_custom() -> u32 {
 
 #[no_mangle]
 pub unsafe extern "thiscall" fn maybe_render_all_objects_hook(this: u32, a2: u32, a3: u32, a4: u32, a5: u32) -> i32 {
-    let orig: extern "thiscall" fn(this: u32, a2: u32, a3: u32, a4: u32, a5: u32) -> i32 = unsafe { mem::transmute(0x004B58C0) };
+    let orig: extern "thiscall" fn(this: u32, a2: u32, a3: u32, a4: u32, a5: u32) -> i32 = unsafe { mem::transmute(p3_api::addr(0x004B58C0)) };
     orig(this, a2, a3, a4, a5);
     let res_width = get_resolution_width() as i32;
     let res_height = get_resolution_height() as i32;

@@ -17,7 +17,7 @@ impl UITradingOfficeWindowPtr {
     pub const VTABLE_OFFSET: u32 = 0x279CB0;
     pub fn new() -> Self {
         Self {
-            address: unsafe { *STATIC_UI_TRADING_OFFICE_WINDOW_PTR_ADDRESS },
+            address: unsafe { *crate::addr_ptr(STATIC_UI_TRADING_OFFICE_WINDOW_PTR_ADDRESS) },
         }
     }
 

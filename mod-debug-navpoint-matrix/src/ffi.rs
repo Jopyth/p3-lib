@@ -14,8 +14,12 @@ const STROKE_LENGTH: i32 = 4;
 unsafe extern "C" fn start() -> u32 {
     mods::init_mod();
 
+    if !p3_api::version::is_supported() {
+        return p3_api::version::UNSUPPORTED_BUILD;
+    }
+
     debug!("Deploying draw_navigation_line hook");
-    match hook_call_rel32(0x4AE38, draw_line_hook as usize as u32) {
+    match hook_call_rel32(p3_api::version::addr_rva(0x4AE38), draw_line_hook as usize as u32) {
         Ok(hook) => {
             DRAW_NAVIGATION_LINE_HOOK_PTR.store(Box::into_raw(Box::new(hook)), Ordering::SeqCst);
         }

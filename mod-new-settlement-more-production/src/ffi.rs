@@ -13,12 +13,15 @@ pub unsafe extern "C" fn start() -> u32 {
     let _ = log::set_logger(&win_dbg_logger::DEBUGGER_LOGGER);
     log::set_max_level(log::LevelFilter::Trace);
 
+    if !p3_api::version::is_supported() {
+        return p3_api::version::UNSUPPORTED_BUILD;
+    }
+
     let mut old_flags: PAGE_PROTECTION_FLAGS = windows::Win32::System::Memory::PAGE_PROTECTION_FLAGS(0);
 
-
     // First patch: 0x00532FD9, change BD03 to BD05 (iVar11 = 3 -> iVar11 = 5)
-    let patch_ptr_1: *mut u8 = PATCH_ADDRESS_1 as _;
-    
+    let patch_ptr_1: *mut u8 = p3_api::addr(PATCH_ADDRESS_1) as _;
+
     if !VirtualProtect(patch_ptr_1 as _, 5, PAGE_EXECUTE_READWRITE, &mut old_flags).as_bool() {
         let error: WIN32_ERROR = GetLastError();
         error!("VirtualProtect PAGE_EXECUTE_READWRITE failed for patch 1: {:?}", error);
@@ -34,10 +37,8 @@ pub unsafe extern "C" fn start() -> u32 {
         return 2;
     }
 
-
-
     // Second patch: 0x00532f9f, change B903 to B904 (iVar11 = 3 -> iVar11 = 4)
-    let patch_ptr_2: *mut u8 = PATCH_ADDRESS_2 as _;
+    let patch_ptr_2: *mut u8 = p3_api::addr(PATCH_ADDRESS_2) as _;
 
     if !VirtualProtect(patch_ptr_2 as _, 5, PAGE_EXECUTE_READWRITE, &mut old_flags).as_bool() {
         let error: WIN32_ERROR = GetLastError();
@@ -54,10 +55,8 @@ pub unsafe extern "C" fn start() -> u32 {
         return 4;
     }
 
-
-    
     // Third patch: 0x00533007, change BD040000 to 83C50190 90 (iVar11 = 4 -> iVar11 = iVar11 + 1)
-    let patch_ptr_3: *mut u8 = PATCH_ADDRESS_3 as _;
+    let patch_ptr_3: *mut u8 = p3_api::addr(PATCH_ADDRESS_3) as _;
 
     if !VirtualProtect(patch_ptr_3 as _, 5, PAGE_EXECUTE_READWRITE, &mut old_flags).as_bool() {
         let error: WIN32_ERROR = GetLastError();
@@ -66,7 +65,7 @@ pub unsafe extern "C" fn start() -> u32 {
     }
 
     debug!("Patching instruction at {:#x}", PATCH_ADDRESS_3);
-    *patch_ptr_3 = 0x83;           // ADD opcode
+    *patch_ptr_3 = 0x83; // ADD opcode
     *patch_ptr_3.offset(1) = 0xC5; // EBP register
     *patch_ptr_3.offset(2) = 0x01; // immediate 1
     *patch_ptr_3.offset(3) = 0x90; // NOP padding

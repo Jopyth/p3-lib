@@ -82,7 +82,7 @@ impl P3Pointer for TownPtr {
 
 pub fn get_town_name(town_index: u8) -> Option<String> {
     unsafe {
-        let town_names_ptr: *const *const u8 = TOWN_NAME_PTRS_ADDRESS as _;
+        let town_names_ptr: *const *const u8 = crate::addr(TOWN_NAME_PTRS_ADDRESS) as _;
         let town_name_ptr = *town_names_ptr.add(town_index as _);
         if town_name_ptr.is_null() {
             None

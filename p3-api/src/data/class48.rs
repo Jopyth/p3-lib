@@ -17,7 +17,7 @@ impl Default for Class48Ptr {
 
 impl Class48Ptr {
     pub fn new() -> Self {
-        let ptr: *const u32 = CLASS48_PTR_ADDRESS as _;
+        let ptr: *const u32 = crate::addr(CLASS48_PTR_ADDRESS) as _;
         Self { address: unsafe { *ptr } }
     }
 
@@ -32,7 +32,7 @@ impl Class48Ptr {
     }
 
     pub unsafe fn clip_stuff(&self) {
-        let function: extern "thiscall" fn(this: *const c_void) = unsafe { mem::transmute(0x004665D0) };
+        let function: extern "thiscall" fn(this: *const c_void) = unsafe { mem::transmute(crate::addr(0x004665D0)) };
         function(self.address as _)
     }
 }

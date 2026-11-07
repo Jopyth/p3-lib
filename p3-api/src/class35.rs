@@ -94,7 +94,9 @@ pub struct ShipRouteArgsInner {
 
 impl Class35Ptr {
     pub unsafe fn new() -> Self {
-        Self { address: *CLASS35_PTR_ADDRESS }
+        Self {
+            address: *crate::addr_ptr(CLASS35_PTR_ADDRESS),
+        }
     }
 
     pub unsafe fn get_nav_vec_entry(&self, offset: usize) -> (i16, i16) {
@@ -122,7 +124,8 @@ impl Class35Ptr {
             route_type: 2,
         };
         let mut ship_route: *mut ShipRoute = ptr::null_mut();
-        let orig: extern "thiscall" fn(this: u32, route_args: *const ShipRouteArgs, route: *mut *mut ShipRoute) -> bool = mem::transmute(0x00445010);
+        let orig: extern "thiscall" fn(this: u32, route_args: *const ShipRouteArgs, route: *mut *mut ShipRoute) -> bool =
+            mem::transmute(crate::addr(0x00445010));
         let needs_free = orig(self.address, &args, &mut ship_route);
         if !ship_route.is_null() {
             Some(ShipRoutePtr {

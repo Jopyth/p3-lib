@@ -1,12 +1,14 @@
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 
 use log::warn;
 use p3_api::{
-    data::{ddraw_set_constant_color, ui_render_text_at},
+    data::{ddraw_set_constant_color, enums::WareId, ui_render_text_at},
     game_world::GAME_WORLD_PTR,
     missions::alderman_missions::{AldermanMissionDataPtr, FoundTownPtr},
     operations::OPERATIONS_PTR,
     scheduled_tasks::{scheduled_task::ScheduledTaskData, SCHEDULED_TASKS_PTR},
+    text::{latin1, Localized},
+    town::get_town_name,
     ui::{
         font::{self, get_normal_font},
         ui_town_hall_window::UITownHallWindowPtr,
@@ -14,11 +16,23 @@ use p3_api::{
 };
 
 const COL_OFFSETS: &[i32; 2] = &[25, 400];
-static TASK_RESCHEDULING_IN: &CStr = c"Rescheduling in";
-static TASK_RESCHEDULES_REMAINING: &CStr = c"Reschedule Counter";
-static TOWN: &CStr = c"Town";
-static EFFECTIVE_PRODUCTION: &CStr = c"Effective Production";
-static LOW_PRODUCTION: &CStr = c"Low Production";
+static TASK_RESCHEDULING_IN: Localized = Localized {
+    en: "Rescheduling in",
+    de: "Neuplanung in",
+};
+static TASK_RESCHEDULES_REMAINING: Localized = Localized {
+    en: "Reschedule Counter",
+    de: "Verbleibende Verschiebungen",
+};
+static TOWN: Localized = Localized { en: "Town", de: "Stadt" };
+static EFFECTIVE_PRODUCTION: Localized = Localized {
+    en: "Effective Production",
+    de: "Wirksame Produktion",
+};
+static LOW_PRODUCTION: Localized = Localized {
+    en: "Low Production",
+    de: "Geringe Produktion",
+};
 
 pub(crate) unsafe fn draw_page(window: UITownHallWindowPtr) {
     let next_mission_index = window.get_next_mission_index();
@@ -53,7 +67,7 @@ pub(crate) unsafe fn draw_page(window: UITownHallWindowPtr) {
     let mut y = window.get_y() + 60;
 
     font::ddraw_set_text_mode(font::TextMode::AlignLeft);
-    ui_render_text_at(x + COL_OFFSETS[0], y, TASK_RESCHEDULING_IN.to_bytes());
+    ui_render_text_at(x + COL_OFFSETS[0], y, TASK_RESCHEDULING_IN.get().to_bytes());
     font::ddraw_set_text_mode(font::TextMode::AlignRight);
     let rescheduling_in = task.get_due_timestamp() - GAME_WORLD_PTR.get_game_time_raw();
     let task_due_in_cstring = CString::new(format!("{rescheduling_in:#05x}")).unwrap();
@@ -61,7 +75,7 @@ pub(crate) unsafe fn draw_page(window: UITownHallWindowPtr) {
     y += 20;
 
     font::ddraw_set_text_mode(font::TextMode::AlignLeft);
-    ui_render_text_at(x + COL_OFFSETS[0], y, TASK_RESCHEDULES_REMAINING.to_bytes());
+    ui_render_text_at(x + COL_OFFSETS[0], y, TASK_RESCHEDULES_REMAINING.get().to_bytes());
     font::ddraw_set_text_mode(font::TextMode::AlignRight);
     let reschedules_remaining = mission.get_reschedule_counter();
     let task_due_in_cstring = CString::new(format!("{reschedules_remaining}")).unwrap();
@@ -85,14 +99,14 @@ unsafe fn render_aldermans_office_modifications_found_town(window: UITownHallWin
     let mut y = window.get_y() + 100;
 
     font::ddraw_set_text_mode(font::TextMode::AlignLeft);
-    ui_render_text_at(x + COL_OFFSETS[0], y, TOWN.to_bytes());
+    ui_render_text_at(x + COL_OFFSETS[0], y, TOWN.get().to_bytes());
     font::ddraw_set_text_mode(font::TextMode::AlignRight);
-    let town_cstring = CString::new(format!("{town:?}")).unwrap();
+    let town_cstring = latin1(&get_town_name(town as u8).unwrap_or_else(|| format!("{town:?}")));
     ui_render_text_at(x + COL_OFFSETS[1], y, town_cstring.to_bytes());
     y += 20;
 
     font::ddraw_set_text_mode(font::TextMode::AlignLeft);
-    ui_render_text_at(x + COL_OFFSETS[0], y, EFFECTIVE_PRODUCTION.to_bytes());
+    ui_render_text_at(x + COL_OFFSETS[0], y, EFFECTIVE_PRODUCTION.get().to_bytes());
     font::ddraw_set_text_mode(font::TextMode::AlignRight);
     let mut effective_string = String::new();
     for facility in effective {
@@ -101,43 +115,51 @@ unsafe fn render_aldermans_office_modifications_found_town(window: UITownHallWin
             p3_api::data::enums::FacilityId::Shipyard => warn!("Unexpected facility {facility:?}"),
             p3_api::data::enums::FacilityId::Construction => warn!("Unexpected facility {facility:?}"),
             p3_api::data::enums::FacilityId::Weaponsmith => warn!("Unexpected facility {facility:?}"),
-            p3_api::data::enums::FacilityId::HuntingLodge => effective_string.push_str("Skins, "),
+            p3_api::data::enums::FacilityId::HuntingLodge => push_ware_names(&mut effective_string, &[WareId::Skins]),
             p3_api::data::enums::FacilityId::FishermansHouse => {
                 if effective_raw & 0x20000 != 0 {
-                    effective_string.push_str("Whale Oil, ")
+                    push_ware_names(&mut effective_string, &[WareId::WhaleOil])
                 } else {
-                    effective_string.push_str("Fish, ")
+                    push_ware_names(&mut effective_string, &[WareId::Fish])
                 }
             }
-            p3_api::data::enums::FacilityId::Brewery => effective_string.push_str("Beer, "),
-            p3_api::data::enums::FacilityId::Workshop => effective_string.push_str("Iron Goods, "),
-            p3_api::data::enums::FacilityId::Apiary => effective_string.push_str("Honey, "),
-            p3_api::data::enums::FacilityId::GrainFarm => effective_string.push_str("Grain, "),
-            p3_api::data::enums::FacilityId::CattleFarm => effective_string.push_str("Meat, Leather, "),
-            p3_api::data::enums::FacilityId::Sawmill => effective_string.push_str("Timber, "),
-            p3_api::data::enums::FacilityId::WeavingMill => effective_string.push_str("Cloth, "),
-            p3_api::data::enums::FacilityId::Saltery => effective_string.push_str("Salt, "),
-            p3_api::data::enums::FacilityId::Ironsmelter => effective_string.push_str("Pig Iron, "),
-            p3_api::data::enums::FacilityId::SheepFarm => effective_string.push_str("Wool, "),
-            p3_api::data::enums::FacilityId::Vineyard => effective_string.push_str("Wine, "),
-            p3_api::data::enums::FacilityId::Pottery => effective_string.push_str("Pottery, "),
-            p3_api::data::enums::FacilityId::Brickworks => effective_string.push_str("Bricks, "),
-            p3_api::data::enums::FacilityId::Pitchmaker => effective_string.push_str("Pitch, "),
-            p3_api::data::enums::FacilityId::HempFarm => effective_string.push_str("Hemp, "),
+            p3_api::data::enums::FacilityId::Brewery => push_ware_names(&mut effective_string, &[WareId::Beer]),
+            p3_api::data::enums::FacilityId::Workshop => push_ware_names(&mut effective_string, &[WareId::IronGoods]),
+            p3_api::data::enums::FacilityId::Apiary => push_ware_names(&mut effective_string, &[WareId::Honey]),
+            p3_api::data::enums::FacilityId::GrainFarm => push_ware_names(&mut effective_string, &[WareId::Grain]),
+            p3_api::data::enums::FacilityId::CattleFarm => push_ware_names(&mut effective_string, &[WareId::Meat, WareId::Leather]),
+            p3_api::data::enums::FacilityId::Sawmill => push_ware_names(&mut effective_string, &[WareId::Timber]),
+            p3_api::data::enums::FacilityId::WeavingMill => push_ware_names(&mut effective_string, &[WareId::Cloth]),
+            p3_api::data::enums::FacilityId::Saltery => push_ware_names(&mut effective_string, &[WareId::Salt]),
+            p3_api::data::enums::FacilityId::Ironsmelter => push_ware_names(&mut effective_string, &[WareId::PigIron]),
+            p3_api::data::enums::FacilityId::SheepFarm => push_ware_names(&mut effective_string, &[WareId::Wool]),
+            p3_api::data::enums::FacilityId::Vineyard => push_ware_names(&mut effective_string, &[WareId::Wine]),
+            p3_api::data::enums::FacilityId::Pottery => push_ware_names(&mut effective_string, &[WareId::Pottery]),
+            p3_api::data::enums::FacilityId::Brickworks => push_ware_names(&mut effective_string, &[WareId::Bricks]),
+            p3_api::data::enums::FacilityId::Pitchmaker => push_ware_names(&mut effective_string, &[WareId::Pitch]),
+            p3_api::data::enums::FacilityId::HempFarm => push_ware_names(&mut effective_string, &[WareId::Hemp]),
         }
     }
     effective_string.pop();
     effective_string.pop();
-    let effective_cstring = CString::new(effective_string).unwrap();
+    let effective_cstring = latin1(&effective_string);
     ui_render_text_at(x + COL_OFFSETS[1], y, effective_cstring.to_bytes());
     y += 20;
 
     font::ddraw_set_text_mode(font::TextMode::AlignLeft);
-    ui_render_text_at(x + COL_OFFSETS[0], y, LOW_PRODUCTION.to_bytes());
+    ui_render_text_at(x + COL_OFFSETS[0], y, LOW_PRODUCTION.get().to_bytes());
 
     font::ddraw_set_text_mode(font::TextMode::AlignRight);
     let mut ineffective_string = String::new();
     if effective_raw & 0x20000 != 0 {
-        ineffective_string.push_str("Fish")
+        ineffective_string.push_str(&WareId::Fish.get_name())
+    }
+}
+
+/// Append the wares' names in the game's language, each followed by ", ".
+fn push_ware_names(list: &mut String, wares: &[WareId]) {
+    for ware in wares {
+        list.push_str(&ware.get_name());
+        list.push_str(", ");
     }
 }

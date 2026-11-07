@@ -13,7 +13,9 @@ pub struct MissionsPtr {
 
 impl MissionsPtr {
     pub fn new() -> Self {
-        Self { address: MISSIONS_ADDRESS }
+        Self {
+            address: crate::addr(MISSIONS_ADDRESS),
+        }
     }
 
     pub fn get_mission(&self, mission_id: u16) -> Option<MissionPtr> {

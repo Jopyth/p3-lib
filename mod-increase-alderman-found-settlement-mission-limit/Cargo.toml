@@ -8,6 +8,7 @@ crate-type = ["cdylib"]
 name="increase_alderman_found_settlement_mission_limit"
 
 [dependencies]
+p3-api = { path = "../p3-api" }
 log = { workspace = true }
 win_dbg_logger = { workspace = true }
 

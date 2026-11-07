@@ -8,6 +8,7 @@ crate-type = ["cdylib"]
 name="fix_new_settlement_ware_production"
 
 [dependencies]
+p3-api = { path = "../p3-api" }
 log = { workspace = true }
 win_dbg_logger = { workspace = true }
 hooklet = { workspace = true }

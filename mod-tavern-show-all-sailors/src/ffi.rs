@@ -10,7 +10,11 @@ const PATCH_ADDRESS: u32 = 0x005D4CD6;
 pub unsafe extern "C" fn start() -> u32 {
     let _ = log::set_logger(&win_dbg_logger::DEBUGGER_LOGGER);
     log::set_max_level(log::LevelFilter::Trace);
-    let patch_ptr: *mut u8 = PATCH_ADDRESS as _;
+
+    if !p3_api::version::is_supported() {
+        return p3_api::version::UNSUPPORTED_BUILD;
+    }
+    let patch_ptr: *mut u8 = p3_api::addr(PATCH_ADDRESS) as _;
 
     let mut old_flags: PAGE_PROTECTION_FLAGS = windows::Win32::System::Memory::PAGE_PROTECTION_FLAGS(0);
     if !VirtualProtect(patch_ptr as _, 5, PAGE_EXECUTE_READWRITE, &mut old_flags).as_bool() {
