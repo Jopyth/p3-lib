@@ -1,0 +1,13 @@
+[package]
+name = "mod-auto-capture"
+edition = "2021"
+version.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+name="auto_capture"
+
+[dependencies]
+log = { workspace = true }
+p3-api = { path = "../p3-api" }
+hooklet = { workspace = true }

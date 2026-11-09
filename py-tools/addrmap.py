@@ -178,22 +178,27 @@ class Mapper:
             cand = g + (va - f)
             if matches_at(self.intl, f, self.target, g, va - f + TAIL_LEN) and matches_at(self.intl, va, self.target, cand, TAIL_LEN):
                 return cand, f"function+{va - f:#x} (function {f:#x} -> {g:#x})"
-        bs, mask = masked(self.intl, va, 48)
-        if len(bs) >= 16:
+        reason = "too little code to match"
+        # Shorter signatures help when data (e.g. a switch jump table with absolute addresses)
+        # follows the code shortly after the address.
+        for length in (48, 32, 24, 16):
+            bs, mask = masked(self.intl, va, length)
+            if len(bs) < 16:
+                break
             pat = pattern(bs, mask)
             if f is not None:
                 exp = self.fmap[f] + (va - f)
                 lo = max(exp - 0x800, self.target.text_lo)
                 hits = [m.start() + lo for m in pat.finditer(self.target.bytes(lo, 0x1000))]
                 if len(hits) == 1:
-                    return hits[0], f"local signature (expected {exp:#x}, off by {hits[0] - exp:+#x})"
+                    return hits[0], f"local signature of {length} bytes (expected {exp:#x}, off by {hits[0] - exp:+#x})"
                 if exp in hits:
                     return exp, f"local signature at the expected place ({len(hits)} hits nearby)"
             hits = [m.start() + self.target.text_lo for m in pat.finditer(self.target_text)]
             if len(hits) == 1:
-                return hits[0], "global signature"
-            return None, f"signature has {len(hits)} hits"
-        return None, "too little code to match"
+                return hits[0], f"global signature of {length} bytes"
+            reason = f"signature has {len(hits)} hits"
+        return None, reason
 
     def map_by_pointee(self, va):
         """Map a slot that holds a pointer to a string (e.g. a UI text table) through that string."""
