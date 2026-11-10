@@ -1,4 +1,4 @@
-//! The price limits and colors, read from `mods/trade_price_colors.ini`.
+//! The price limits and colors, read from `trade_price_colors.ini` in the game folder.
 //!
 //! The file is written with the defaults if it doesn't exist, and read again whenever it
 //! changes, so prices can be tuned while the game runs.
@@ -15,7 +15,7 @@ use p3_api::{
     version::{game_version, GameVersion},
 };
 
-pub const CONFIG_PATH: &str = "./mods/trade_price_colors.ini";
+pub const CONFIG_PATH: &str = "trade_price_colors.ini";
 
 /// The default green (ARGB), readable on the trade window's buttons.
 const DEFAULT_COLOR: u32 = 0xFF00_8000;
